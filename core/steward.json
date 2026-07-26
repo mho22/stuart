@@ -1,0 +1,22 @@
+{
+	"repository" : "WordPress/wordpress-playground",
+	"roster" : [
+		"adamziel",
+		"akirk",
+		"ashfame",
+		"bgrgicak",
+		"brandonpayton",
+		"fellyph",
+		"janjakes",
+		"mho22",
+		"zaerl"
+	],
+	"orbit" : {
+		"names" : [
+			"wordpress-playground",
+			"wp-playground",
+			"php-wasm"
+		],
+		"packages" : "@wp-playground/|@php-wasm/|wordpress-playground"
+	}
+}
