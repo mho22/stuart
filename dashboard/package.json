@@ -1,0 +1,20 @@
+{
+	"name" : "steward-dashboard",
+	"private" : true,
+	"type" : "module",
+	"scripts" : {
+		"dev" : "vite",
+		"build" : "vue-tsc -b && vite build"
+	},
+	"dependencies" : {
+		"@anthropic-ai/claude-code" : "^2.1.247",
+		"marked" : "^18.0.11",
+		"vue" : "^3.5.41"
+	},
+	"devDependencies" : {
+		"@vitejs/plugin-vue" : "^6.0.8",
+		"typescript" : "^5.9.3",
+		"vite" : "^8.2.2",
+		"vue-tsc" : "^3.3.11"
+	}
+}
