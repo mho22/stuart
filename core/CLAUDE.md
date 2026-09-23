@@ -40,7 +40,7 @@ These bind every run, before any workflow prompt:
 
 ## The rulebooks and where things live
 
-- **steward.json** — the project's identity: the repository the steward watches, the roster, the orbit's proper names and packages. The one file to edit when pointing the steward at another repository.
+- **steward.json** — the project's identity: the repository the steward watches, the roster, the orbit's proper names and packages. The one file to edit when pointing the steward at another repository. It also carries `staleness_verdict_days`, how long the sweep trusts a staleness verdict before re-verifying it.
 - **CONTRIBUTING.md** — how to judge issues and PRs. Loaded by **sweep**.
 - **MAINTAINING.md** — how to profile people. Loaded by **analysis**, the single writer of `maintainers/`.
 - The two workflows are skills under `.claude/skills/` (`sweep`, `analysis`), all writing through the shared `store` skill. Each run is launched locally — in a session, or through `scripts/run.ts`.

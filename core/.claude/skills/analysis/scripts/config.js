@@ -7,7 +7,10 @@
 //
 // IDENTITY ONLY — "who and where", never "what is acceptable". Policy (the PR cap,
 // the silence threshold, every judgment the steward makes) lives in CONTRIBUTING.md
-// as prose, by design. Never move a rule into this file.
+// as prose, by design. Never move a rule into this file. The one non-identity field
+// is `staleness_verdict_days`, the steward's own economy — how long it trusts a
+// staleness verdict before re-verifying — which judges nobody and so belongs here
+// rather than in the rulebook.
 //
 // Loading throws rather than defaulting: a steward silently watching the wrong
 // repository is worse than one that refuses to start.
@@ -34,6 +37,11 @@ function load() {
     throw new Error('steward.json: "roster" must be a non-empty array of GitHub logins');
   }
 
+  const days = cfg.staleness_verdict_days === undefined ? 7 : cfg.staleness_verdict_days;
+  if (typeof days !== 'number' || days < 0) {
+    throw new Error('steward.json: "staleness_verdict_days" must be a non-negative number');
+  }
+
   const orbit = cfg.orbit || {};
   return {
     repository: cfg.repository,
@@ -42,6 +50,7 @@ function load() {
       names: orbit.names || [],
       packages: orbit.packages || null,
     },
+    staleness_verdict_days: days,
   };
 }
 

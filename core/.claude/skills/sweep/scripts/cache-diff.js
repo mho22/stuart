@@ -8,12 +8,17 @@
 //   - changed              cache exists AND judged_against != updated_at  -> triage
 //   - never_judged         no cache entry                                 -> triage
 //   - staleness_reverify   cache has a staleness verdict whose codebase_position
-//                          is behind the current default branch           -> triage
+//                          is behind the current default branch AND whose
+//                          judged_at has outlived steward.json's
+//                          staleness_verdict_days                        -> triage
 //
 // The staleness re-verify is the deliberate exception to "unchanged = free": a
 // staleness verdict is about the CODEBASE, not only the item, so it re-verifies
-// every sweep when the branch has moved (still triage-priced; frontier only if
-// triage flags it).
+// when the branch has moved (still triage-priced; frontier only if triage flags
+// it). A verdict has a shelf-life — steward.json's `staleness_verdict_days` —
+// and keeps standing until it expires even when the branch has moved
+// (workflow/DESIGN.md, "Sweep", amendment of 2026-09-23): re-verifying every
+// run was measured flipping no verdicts.
 //
 // Usage: cache-diff.js [--file items.json | <stdin>] --codebase-sha <sha>
 // Emits JSON: { unchanged, changed, never_judged, staleness_reverify } (each an array of {number,url})
@@ -24,6 +29,7 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const CACHE = path.join(ROOT, '.claude', 'state', 'cache');
+const REVERIFY_DAYS = require('./config').staleness_verdict_days;
 
 function parse(argv) {
   const o = {};
@@ -56,11 +62,14 @@ for (const it of items) {
   else { out.unchanged.push(ref); }
 
   // Staleness re-verify: even an unchanged item re-checks its staleness verdict
-  // when the codebase moved past what it was judged against.
+  // when the codebase moved past what it was judged against — once the verdict
+  // outlives its shelf-life, not every sweep.
   if (c.staleness && c.staleness.codebase_position) {
     const pos = String(c.staleness.codebase_position);
     const moved = o.sha && !pos.endsWith(o.sha) && pos !== o.sha;
-    if (moved) out.staleness_reverify.push({ ...ref, was: pos, now: o.sha });
+    const age = Date.now() - (Date.parse(c.staleness.judged_at) || 0);
+    const due = age >= REVERIFY_DAYS * 24 * 60 * 60 * 1000;
+    if (moved && due) out.staleness_reverify.push({ ...ref, was: pos, now: o.sha });
   }
 }
 

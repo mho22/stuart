@@ -17,5 +17,6 @@
 			"php-wasm"
 		],
 		"packages" : "@wp-playground/|@php-wasm/|wordpress-playground"
-	}
+	},
+	"staleness_verdict_days" : 7
 }

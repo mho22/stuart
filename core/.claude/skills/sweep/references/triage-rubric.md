@@ -36,9 +36,13 @@ new word. Nothing here re-arms an inactivity reminder either (CONTRIBUTING.md ru
 
 An `unchanged` item can still need Opus if its standing staleness verdict is stale:
 its recorded `codebase_position` is behind the current default branch. That is why
-`cache-diff.js` re-checks staleness even for unchanged items. Triage asks only
-whether the landed changes plausibly touch the item; Opus re-judges only what triage
-flags. Everything the codebase question doesn't reach stays free.
+`cache-diff.js` re-checks staleness even for unchanged items. The re-check waits for
+the verdict's shelf-life — `steward.json`'s `staleness_verdict_days`, seven — not
+every sweep (workflow/DESIGN.md, amendment of 2026-09-23): an unexpired verdict
+stands even when the branch has moved, so on a daily cadence most sweeps route
+nothing here. Triage asks only whether the landed changes plausibly touch the
+item; Opus re-judges only what triage flags. Everything the codebase question doesn't
+reach stays free.
 
 ## Cheapness is the point, missing a change is not
 
