@@ -66,7 +66,7 @@ node core/scripts/run.ts sweep      # the whole backlog
 node core/scripts/run.ts analysis   # the maintainer profiles
 ```
 
-It takes a lock, checks `gh auth status`, and starts a headless Claude Code session in `core/` pinned to Opus 5. One run at a time: a second call while a sweep is still going stops rather than write the same cache twice. It exits zero when the run finished. Node runs the TypeScript directly, so there is nothing to install and nothing to build.
+It takes a lock, checks `gh auth status`, and starts a headless Claude Code session in `core/` pinned to Opus 5. One run at a time: a second call while a sweep is still going stops rather than write the same cache twice. It exits zero when the run finished. Every step prints as it happens — what the steward says, one line per tool call, and a line when the subscription's usage limit stops the run — so a long sweep shows it is alive. Node runs the TypeScript directly, so there is nothing to install and nothing to build.
 
 **The key, and why you probably want none.** With no key set, the session uses the Claude Code login already on the machine, and the run is absorbed by the subscription exactly like a run you start in a session. An API key moves the run onto metered billing instead — `specification/workflow/DESIGN.md` priced a cold full sweep at about $150 there, which is why the subscription was chosen in the first place. The log line of every run says which one paid.
 

@@ -5,14 +5,16 @@
 //
 // The same run a maintainer starts by hand, in a terminal instead of a
 // conversation: a log to read afterwards and an exit code to check. Zero means
-// the run finished.
+// the run finished. Every step prints as it happens, so a long run shows it is
+// alive.
 //
 // Node runs this file directly — type stripping, no build step, no dependency.
 
-import { spawnSync } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { createInterface } from 'node:readline'
 
 // The argument is the skill name, so the command line and the session say the
 // same word. Same two names as WORKFLOWS in the store's lib.js.
@@ -84,6 +86,36 @@ function apiKey(): string {
   return process.env.ANTHROPIC_API_KEY || ''
 }
 
+// One line per tool call, keyed on the input that says what it does. A
+// subagent's lines are indented under the call that spawned it.
+function describe(input: Record<string, unknown>): string {
+  const detail = String(input.command ?? input.file_path ?? input.description ?? input.pattern ?? '')
+  return detail.split('\n')[0].slice(0, 160)
+}
+
+// The session streams one JSON event per line. Only what the steward says and
+// does is worth a line; the rest is bookkeeping.
+function show(line: string): void {
+  let event
+  try { event = JSON.parse(line) } catch { console.log(line); return }
+
+  if (event.type === 'rate_limit_event' && event.rate_limit_info?.status !== 'allowed') {
+    console.log(`run: usage limit ${event.rate_limit_info?.status}, resets ${new Date(event.rate_limit_info?.resetsAt * 1000).toISOString()}`)
+    return
+  }
+  if (event.type === 'result') {
+    console.log(`run: session ${event.subtype} after ${event.num_turns} turns`)
+    return
+  }
+  if (event.type !== 'assistant') return
+
+  const indent = event.parent_tool_use_id ? '    ' : ''
+  for (const block of event.message.content) {
+    if (block.type === 'text') console.log(`${indent}${block.text}`)
+    if (block.type === 'tool_use') console.log(`${indent}> ${block.name} ${describe(block.input)}`)
+  }
+}
+
 lock()
 
 // Before both checks, so a token or key living in .env is visible to them.
@@ -94,17 +126,30 @@ const key = apiKey()
 const billing = key ? 'an api key' : 'the claude code login on this machine'
 console.log(`run: ${workflow} starting ${new Date().toISOString()}, billed to ${billing}`)
 
-const session = spawnSync(
+// The sweep judges its batches in background subagents. A headless session
+// stops waiting for them after ten minutes by default and exits zero, so the
+// run loses its report and its timestamp while the log reads as a success.
+const WAIT_FOR_SUBAGENTS = { CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS: '0' }
+
+const session = spawn(
   CLAUDE,
-  ['--print', `/${workflow}`, '--model', MODEL, '--permission-mode', 'bypassPermissions'],
+  [
+    '--print', `/${workflow}`,
+    '--model', MODEL,
+    '--permission-mode', 'bypassPermissions',
+    '--output-format', 'stream-json', '--verbose',
+  ],
   {
     cwd: CORE,
-    stdio: 'inherit',
-    env: key ? { ...process.env, ANTHROPIC_API_KEY: key } : process.env,
+    stdio: ['ignore', 'pipe', 'inherit'],
+    env: { ...process.env, ...WAIT_FOR_SUBAGENTS },
   },
 )
 
-if (session.error) die(`claude did not start: ${session.error.message}`)
+session.on('error', error => die(`claude did not start: ${error.message}`))
+createInterface({ input: session.stdout }).on('line', show)
 
-console.log(`run: ${workflow} finished ${new Date().toISOString()} (exit ${session.status})`)
-process.exit(session.status ?? 1)
+session.on('close', status => {
+  console.log(`run: ${workflow} finished ${new Date().toISOString()} (exit ${status})`)
+  process.exit(status ?? 1)
+})
